@@ -1,0 +1,14 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+input[name="cpf"] {
+    letter-spacing: 1px;
+}
+
+/* Máscara visual para CPF */
+input[name="cpf"]:focus {
+    background-position: right 1rem center;
+    background-repeat: no-repeat;
+    background-size: 1rem 1rem;
+}
