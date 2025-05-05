@@ -30,6 +30,11 @@ class User extends Authenticatable
         return $this->hasOne(BankAccount::class, 'user_id', 'id');
     }
 
+
+    public function creditCard()
+    {
+        return $this->hasOne(CreditCard::class, 'bank_accounts_user_id', 'id');
+    }
     /**
      * The attributes that should be hidden for serialization.
      *

@@ -27,7 +27,9 @@
                     <x-nav-link :href="route('transactions.list')" :active="request()->routeIs('transactions.list')">
                         {{ __('Extrato') }}
                     </x-nav-link>
-            
+                    <x-nav-link :href="route('creditCard.show')" :active="request()->routeIs('creditCard.show')">
+                    {{ __('Cartão de Crédito') }}
+                    </x-nav-link>
 
                 </div>
             </div>

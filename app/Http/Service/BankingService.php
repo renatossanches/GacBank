@@ -1,6 +1,8 @@
 <?php
 
 namespace App\Http\Service;
+use App\Models\CreditCard;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use App\Models\User;
@@ -27,48 +29,54 @@ class BankingService
         });
     }
 
-    public function transfer($senderCpf, $receiverCpf, $amount, $description = '')
+    public function transfer($senderCpf, $receiverCpf, $amount, $description = '', $forceCredit = false)
     {
-        DB::transaction(function () use ($senderCpf, $receiverCpf, $amount, $description) {
+        DB::transaction(function () use ($senderCpf, $receiverCpf, $amount, $description, $forceCredit) {
             $sender = User::where('cpf', $senderCpf)->firstOrFail();
             $receiver = User::where('cpf', $receiverCpf)->firstOrFail();
     
             $senderAccounts = $sender->bankAccounts;
             $receiverAccounts = $receiver->bankAccounts;
     
-            if (!$senderAccounts || !$receiverAccounts) {
-                throw new \Exception('Conta bancária não encontrada para remetente ou destinatário');
-            }
-    
             $senderWallet = $senderAccounts->wallet;
             $receiverWallet = $receiverAccounts->wallet;
+            $senderCreditCard = $senderAccounts->creditCard;
     
-            if (!$senderWallet || !$receiverWallet) {
-                throw new \Exception('Carteira não encontrada para remetente ou destinatário');
+            // Se for para usar o cartão de crédito, adiciona 10% ao valor apenas para o remetente
+            if ($forceCredit) {
+                $amountToDeduct = $amount * 1.10;  // O remetente perde 10% a mais
+            } else {
+                $amountToDeduct = $amount;  // Caso contrário, o valor permanece o mesmo
             }
     
-            if ($senderWallet->balance < $amount) {
-                throw new \Exception('Saldo insuficiente');
+            // Verificação de saldo ou crédito disponível
+            if ($senderWallet->balance >= $amountToDeduct) {
+                $senderWallet->balance -= $amountToDeduct;
+                $senderWallet->save();
+                $transactionType = 'transfer';
+            } elseif ($forceCredit && $senderCreditCard->available_credit >= $amountToDeduct) {
+                $senderCreditCard->available_credit -= $amountToDeduct;
+                $senderCreditCard->save();
+                $transactionType = 'transfer_credit';
+            } else {
+                throw new \Exception('Saldo insuficiente e crédito não autorizado.');
             }
     
-            $senderWallet->balance -= $amount;
-            $senderWallet->save();
-    
+            // O destinatário recebe o valor original
             $receiverWallet->balance += $amount;
             $receiverWallet->save();
     
-            // Cria a transação com a descrição
+            // Criar a transação no banco de dados
             $this->createTransaction2(
                 $senderAccounts->user_id,
                 $senderCpf,
                 $receiverCpf,
                 $amount,
-                'transfer',
-                $description // Aqui é onde a descrição será salva
+                $transactionType,
+                $description
             );
         });
     }
-    
     
     
 
@@ -109,15 +117,21 @@ class BankingService
                 $senderWallet->save();
             }
     
-            // Lógica para transações do tipo 'deposit'
-            if ($transaction->type === 'deposit') {
+            // Lógica para transações do tipo 'transfer_credit' (transação usando crédito)
+            if ($transaction->type === 'transfer_credit') {
+                $senderCreditCard = $sender->bankAccounts->creditCard;
                 $receiverWallet = $receiver->bankAccounts->wallet;
     
                 if ($receiverWallet->balance < $transaction->amount) {
-                    throw new \Exception('O usuário não tem saldo suficiente para reverter o depósito.');
+                    throw new \Exception('O destinatário não tem saldo suficiente para a reversão.');
                 }
     
-                // Atualiza o saldo do destinatário
+                // Reverte o valor para o crédito do remetente
+                $amountToRevert = $transaction->amount * 1.10; 
+                $senderCreditCard->available_credit += $amountToRevert;
+                $senderCreditCard->save();
+    
+                // Atualiza o saldo da carteira do destinatário
                 $receiverWallet->balance -= $transaction->amount;
                 $receiverWallet->save();
             }
@@ -132,8 +146,7 @@ class BankingService
     }
     
     
-
-
+    
     public function getBalance($user)
     {
         // Obtenha o BankAccount do usuário
@@ -172,6 +185,56 @@ class BankingService
                 'created_at' => $transaction->created_at->format('d/m/Y H:i'),
             ];
         });
+    }
+
+    public function createCreditCard()
+    {
+        $user = Auth::user();
+        $bankAccount = $user->bankAccounts;
+
+        $existingCard = CreditCard::where('bank_accounts_user_id', $bankAccount->user_id)->first();
+        if ($existingCard) {
+            return ['error' => 'Você já possui um cartão de crédito.'];
+        }
+        $creditCard = new CreditCard();
+        $creditCard->bank_accounts_user_id = $user->id;
+        $creditCard->card_number = $this->generateCardNumber();
+        $creditCard->card_holder = $user->name; 
+        $creditCard->cvv = rand(100, 999);
+        $creditCard->expiration_date = now()->addYears(5);
+        $creditCard->limit = 5000;
+        $creditCard->balance = 5000;
+        $creditCard->available_credit = 5000;
+        $creditCard->save();
+    }
+
+    private function generateCardNumber()
+    {
+        $bin = '400000';
+        $number = $bin;
+
+        for ($i = 0; $i < 9; $i++) {
+            $number .= rand(0, 9);
+        }
+
+        $number .= $this->calculateLuhn($number);
+        return $number;
+    }
+
+    private function calculateLuhn($number)
+    {
+        $sum = 0;
+        $alt = true;
+        for ($i = strlen($number) - 1; $i >= 0; $i--) {
+            $n = intval($number[$i]);
+            if ($alt) {
+                $n *= 2;
+                if ($n > 9) $n -= 9;
+            }
+            $sum += $n;
+            $alt = !$alt;
+        }
+        return (10 - ($sum % 10)) % 10;
     }
 
     protected function createTransaction($bankAccountsUserId, $senderCpf, $receiverCpf, $amount, $type)

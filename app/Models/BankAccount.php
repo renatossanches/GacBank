@@ -13,7 +13,6 @@ class BankAccount extends Model
     protected $fillable = [
         'user_id',
         'number_account'
-        // outros campos que podem ser preenchidos em massa
     ];
     
     public function user()
@@ -26,10 +25,12 @@ class BankAccount extends Model
         return $this->hasOne(Wallet::class, 'bank_accounts_user_id');
     }
     
-    public function creditCards()
+    public function creditCard()
     {
-        return $this->hasMany(CreditCard::class, 'bank_accounts_user_id');
+        return $this->hasOne(CreditCard::class, 'bank_accounts_user_id', 'user_id');
     }
+    
+    
     
     public function transactions()
     {

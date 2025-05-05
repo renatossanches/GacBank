@@ -15,7 +15,7 @@ return new class extends Migration
             $table->string('sender_cpf', 14);
             $table->string('receiver_cpf', 14)->nullable();
             $table->decimal('amount', 15, 2);
-            $table->enum('type', ['deposit', 'transfer']);
+            $table->enum('type', ['deposit', 'transfer', 'transfer_credit']);
             $table->enum('status', ['pending', 'completed', 'reversed', 'failed'])->default('completed');
             $table->string('description')->nullable();
             $table->string('reversal_reason')->nullable();

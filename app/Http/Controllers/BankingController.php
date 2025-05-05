@@ -35,7 +35,27 @@ class BankingController extends Controller
         return redirect()->route('deposit.form')->with('success', 'Depósito realizado com sucesso!');
     }
     
-    
+    public function confirmCredit(Request $request)
+    {
+        $request->validate([
+            'receiver_cpf' => 'required',
+            'amount' => 'required|numeric|min:0.01',
+            'description' => 'nullable|string|max:255',
+        ]);
+
+        $sender_cpf = auth()->user()->cpf;
+        $receiver_cpf = $request->input('receiver_cpf');
+        $amount = $request->input('amount');
+        $description = $request->input('description', '');
+
+        try {
+            $this->bankingService->transfer($sender_cpf, $receiver_cpf, $amount, $description, true);
+            return redirect()->route('transfer.form')->with('success', 'Transferência realizada com crédito.');
+        } catch (\Exception $e) {
+            return redirect()->route('transfer.form')->with('error', $e->getMessage());
+        }
+    }
+
     public function transfer(Request $request)
     {
         $request->validate([
@@ -46,16 +66,25 @@ class BankingController extends Controller
     
         $sender_cpf = auth()->user()->cpf;
         $receiver_cpf = $request->input('receiver_cpf');
-        $description = $request->input('description', ''); 
+        $description = $request->input('description', '');
         $amount = $request->input('amount');
     
         try {
             $this->bankingService->transfer($sender_cpf, $receiver_cpf, $amount, $description);
             return redirect()->route('transfer.form')->with('success', 'Transferência realizada com sucesso');
         } catch (\Exception $e) {
+            if ($e->getMessage() === 'Saldo insuficiente e crédito não autorizado.') {
+                // Leva para a view confirmCredit.blade.php
+                return view('confirmCredit', [
+                    'receiver_cpf' => $receiver_cpf,
+                    'amount' => $amount,
+                    'description' => $description,
+                ]);
+            }
             return redirect()->route('transfer.form')->with('error', $e->getMessage());
         }
     }
+    
     
     
     
@@ -88,7 +117,13 @@ class BankingController extends Controller
     
         return view('transactions', ['transactions' => $transactions]);
     }
-    
+
+public function createCreditCard(BankingService $bankingService)
+{
+    $bankingService->createCreditCard();
+    return redirect()->back()->with('success', 'Cartão de crédito criado com sucesso!');
+}
+
     protected function createTransaction($bankAccountId, $senderCpf, $receiverCpf, $amount, $type)
     {
         return Transaction::create([

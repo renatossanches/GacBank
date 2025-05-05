@@ -25,7 +25,9 @@ public function dashboard()
 {
     return view('dashboard');
 }
-
+public function showConfirmCreditForm(){
+    return view('confirmCredit');
+}
 
 
 }

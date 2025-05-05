@@ -6,7 +6,7 @@
         </h2>
     </x-slot>
 
-    <div class="max-w-7xl mx-auto mt-10 p-4">
+    <div class="max-w-screen-2xl mx-auto mt-10 p-4">
         @if($transactions->isEmpty())
             <p class="text-center text-gray-700">Você ainda não realizou transações.</p>
         @else
@@ -36,11 +36,11 @@
             @endif
 
 
-                <table class="min-w-full bg-white border border-gray-200 rounded">
+                <table class="w-full table-fixed bg-white border border-gray-200 rounded">
                     <thead>
                         <tr class="bg-gray-100 text-gray-700">
                             <th class="px-4 py-2">Ação</th>
-                            <th class="px-4 py-2">Remetente CPF</th>
+                            <th class="px-4 py-2 ">Remetente CPF</th>
                             <th class="px-4 py-2">Remetente Nome</th>
                             <th class="px-4 py-2">Destinatário CPF</th>
                             <th class="px-4 py-2">Destinatário Nome</th>
@@ -67,7 +67,7 @@
                                         <span class="text-gray-400">Revertida</span>
                                     @endif
                                 </td>
-                                <td class="px-4 py-2">{{ $transaction['sender_cpf'] }}</td>
+                                <td class="px-4 py-2" break-words>{{ $transaction['sender_cpf'] }}</td>
                                 <td class="px-4 py-2">{{ $transaction['sender_name'] }}</td>
                                 <td class="px-4 py-2">{{ $transaction['receiver_cpf'] }}</td>
                                 <td class="px-4 py-2">{{ $transaction['receiver_name'] }}</td>

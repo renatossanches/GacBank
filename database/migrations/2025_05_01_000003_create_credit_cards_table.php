@@ -12,11 +12,14 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('credit_cards', function (Blueprint $table) {
-            $table->id();
-            $table->unsignedBigInteger('bank_accounts_user_id');
+            $table->unsignedBigInteger('bank_accounts_user_id')->primary();
             $table->string('card_number');
-            $table->decimal('available_credit', 15, 2)->default(0);
             $table->string('card_holder');
+            $table->string('cvv', 3);
+            $table->date('expiration_date');
+            $table->decimal('limit', 15, 2)->default(0);
+            $table->decimal('balance', 15, 2)->default(0);
+            $table->decimal('available_credit', 15, 2)->default(0);
             $table->timestamps();
         
             $table->foreign('bank_accounts_user_id')

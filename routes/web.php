@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\CreditCardController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\TransactionController;
@@ -24,6 +25,10 @@ Route::get('/transfer', [TransactionController::class, 'showTransferForm'])->nam
 Route::post('/transfer', [BankingController::class, 'transfer'])->name('transfer');
 Route::get('/transactions', [BankingController::class, 'getUserTransactions'])->name('transactions.list');
 Route::post('/banking/reverse/{id}', [BankingController::class, 'reverse'])->name('banking.reverse');
+Route::get('/credit-card', action: [CreditCardController::class, 'showCreditCard'])->name('creditCard.show');
+Route::post('/credit-card', [BankingController::class, 'createCreditCard'])->name('creditCard.create');
+Route::get('/transfer/confirm-credit', [TransactionController::class, 'showConfirmCreditForm'])->name('transfer.showConfirmCredit');
+Route::post('/transfer/confirm-credit', [BankingController::class, 'confirmCredit'])->name('transfer.confirmCredit');
 });
 
 
